@@ -35,9 +35,13 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void _initSpeech() async {
     _speechAvailable = await _speech.initialize(
       onStatus: (status) {
+        // Auto-restart listening if it stops unexpectedly
         if (status == 'notListening' && _isListening) {
           _startListening();
         }
+      },
+      onError: (error) {
+        debugPrint("Speech error: $error");
       },
     );
     setState(() {});
@@ -59,20 +63,15 @@ class _CountdownScreenState extends State<CountdownScreen> {
           debugPrint("Recognized: $recognized");
 
           if (recognized.contains('ok') || recognized.contains('start')) {
-            // ✅ Restart countdown immediately, even if already running
-            _speech.stop();
-            _isListening = false;
             _startOrRestartCountdown();
           } else if (recognized.contains('stop')) {
-            _speech.stop();
-            _isListening = false;
             _stopCountdown();
           }
         }
       },
       listenMode: stt.ListenMode.confirmation,
-      listenFor: const Duration(minutes: 5),
-      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(minutes: 10), // Long listening
+      pauseFor: const Duration(seconds: 3), // Short pause allowed
       partialResults: true,
     );
 
@@ -88,7 +87,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void _startOrRestartCountdown() {
     final count = int.tryParse(_countdownController.text) ?? 50;
 
-    // ✅ Ensure number is greater than 10
+    // Ensure number is greater than 10
     if (count <= 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -135,19 +134,19 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
       setState(() => _currentCount--);
 
-      // ✅ Turn background red when hitting 10
+      // Turn background red when hitting 10
       if (_currentCount == 10) {
         setState(() {
           _backgroundColor = Colors.red;
         });
       }
 
-      // ✅ Speak every second from 10 down to 1
+      // Speak every second from 10 down to 1
       if (_currentCount <= 10 && _currentCount > 0) {
         await _speakNumber(_currentCount);
       }
 
-      // ✅ Stop countdown when it reaches 0
+      // Stop countdown when it reaches 0
       if (_currentCount <= 0) {
         _isCounting = false;
         timer.cancel();
