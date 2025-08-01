@@ -54,17 +54,26 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
     await _speech.listen(
       onResult: (result) {
-        if (result.finalResult) {
-          final recognized = result.recognizedWords.toLowerCase();
+        if (result.recognizedWords.isNotEmpty) {
+          final recognized = result.recognizedWords.toLowerCase().trim();
+          debugPrint("Recognized: $recognized");
+
           if (recognized.contains('ok') || recognized.contains('start')) {
+            // ✅ Restart countdown immediately, even if already running
+            _speech.stop();
+            _isListening = false;
             _startOrRestartCountdown();
           } else if (recognized.contains('stop')) {
+            _speech.stop();
+            _isListening = false;
             _stopCountdown();
           }
         }
       },
-      listenFor: const Duration(seconds: 5),
-      partialResults: false,
+      listenMode: stt.ListenMode.confirmation,
+      listenFor: const Duration(minutes: 5),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
     );
 
     setState(() => _isListening = true);
