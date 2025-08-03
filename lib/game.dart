@@ -23,7 +23,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
   int _currentCount = 0;
 
   Timer? _countdownTimer;
-  Color _backgroundColor = Colors.white; // default background color
+  Color _backgroundColor = Colors.white;
 
   @override
   void initState() {
@@ -35,9 +35,10 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void _initSpeech() async {
     _speechAvailable = await _speech.initialize(
       onStatus: (status) {
-        // Auto-restart listening if it stops unexpectedly
+        debugPrint("Speech status: $status");
         if (status == 'notListening' && _isListening) {
-          _startListening();
+          // Restart listening automatically if it stops
+          Future.delayed(const Duration(milliseconds: 300), _startListening);
         }
       },
       onError: (error) {
@@ -69,9 +70,9 @@ class _CountdownScreenState extends State<CountdownScreen> {
           }
         }
       },
-      listenMode: stt.ListenMode.confirmation,
-      listenFor: const Duration(minutes: 10), // Long listening
-      pauseFor: const Duration(seconds: 3), // Short pause allowed
+      listenMode: stt.ListenMode.dictation, // Continuous listening
+      listenFor: const Duration(hours: 1), // Long session
+      pauseFor: const Duration(hours: 1), // No stop on silence
       partialResults: true,
     );
 
@@ -87,7 +88,6 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void _startOrRestartCountdown() {
     final count = int.tryParse(_countdownController.text) ?? 50;
 
-    // Ensure number is greater than 10
     if (count <= 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -103,7 +103,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
     setState(() {
       _currentCount = count;
       _isCounting = true;
-      _backgroundColor = Colors.blue; // turn blue when starting
+      _backgroundColor = Colors.blue;
     });
 
     _startCountdown();
@@ -114,7 +114,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
     setState(() {
       _isCounting = false;
       _currentCount = 0;
-      _backgroundColor = Colors.white; // reset to white
+      _backgroundColor = Colors.white;
     });
     _flutterTts.stop();
   }
@@ -134,24 +134,21 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
       setState(() => _currentCount--);
 
-      // Turn background red when hitting 10
       if (_currentCount == 10) {
         setState(() {
           _backgroundColor = Colors.red;
         });
       }
 
-      // Speak every second from 10 down to 1
       if (_currentCount <= 10 && _currentCount > 0) {
         await _speakNumber(_currentCount);
       }
 
-      // Stop countdown when it reaches 0
       if (_currentCount <= 0) {
         _isCounting = false;
         timer.cancel();
         setState(() {
-          _backgroundColor = Colors.white; // Reset background after finish
+          _backgroundColor = Colors.white;
         });
       }
     });
