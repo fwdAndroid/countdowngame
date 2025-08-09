@@ -37,7 +37,6 @@ class _CountdownScreenState extends State<CountdownScreen> {
       onStatus: (status) {
         debugPrint("Speech status: $status");
         if (status == 'notListening' && _isListening) {
-          // Restart listening automatically if it stops
           Future.delayed(const Duration(milliseconds: 300), _startListening);
         }
       },
@@ -63,6 +62,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
           final recognized = result.recognizedWords.toLowerCase().trim();
           debugPrint("Recognized: $recognized");
 
+          // These commands should work at any time
           if (recognized.contains('ok') || recognized.contains('start')) {
             _startOrRestartCountdown();
           } else if (recognized.contains('stop')) {
@@ -70,9 +70,9 @@ class _CountdownScreenState extends State<CountdownScreen> {
           }
         }
       },
-      listenMode: stt.ListenMode.dictation, // Continuous listening
-      listenFor: const Duration(hours: 1), // Long session
-      pauseFor: const Duration(hours: 1), // No stop on silence
+      listenMode: stt.ListenMode.dictation,
+      listenFor: const Duration(hours: 1),
+      pauseFor: const Duration(hours: 1),
       partialResults: true,
     );
 
@@ -88,22 +88,23 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void _startOrRestartCountdown() {
     final count = int.tryParse(_countdownController.text) ?? 50;
 
-    if (count <= 10) {
+    if (count < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a number greater than 10'),
+          content: Text('Please enter a number greater than 0'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
+    // Always cancel any existing timer
     _countdownTimer?.cancel();
 
     setState(() {
       _currentCount = count;
       _isCounting = true;
-      _backgroundColor = Colors.blue;
+      _updateBackgroundColor();
     });
 
     _startCountdown();
@@ -132,13 +133,10 @@ class _CountdownScreenState extends State<CountdownScreen> {
         return;
       }
 
-      setState(() => _currentCount--);
-
-      if (_currentCount == 10) {
-        setState(() {
-          _backgroundColor = Colors.red;
-        });
-      }
+      setState(() {
+        _currentCount--;
+        _updateBackgroundColor();
+      });
 
       if (_currentCount <= 10 && _currentCount > 0) {
         await _speakNumber(_currentCount);
@@ -152,6 +150,21 @@ class _CountdownScreenState extends State<CountdownScreen> {
         });
       }
     });
+  }
+
+  void _updateBackgroundColor() {
+    final startNumber = int.tryParse(_countdownController.text) ?? 50;
+
+    if (_currentCount >= startNumber - 1) {
+      // First 2 numbers (startNumber and startNumber-1)
+      _backgroundColor = Colors.green;
+    } else if (_currentCount <= 10) {
+      _backgroundColor = Colors.red;
+    } else if (_currentCount <= 15) {
+      _backgroundColor = Colors.yellow;
+    } else {
+      _backgroundColor = Colors.blue;
+    }
   }
 
   @override
